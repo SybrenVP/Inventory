@@ -7,7 +7,6 @@ using TMPro;
 public class SelectedItemLabel : MonoBehaviour
 {
     [SerializeField] protected GridCursor _cursor;
-    [SerializeField] protected Inventory _inventory;
 
     protected TMP_Text _textField = null;
 
@@ -17,9 +16,8 @@ public class SelectedItemLabel : MonoBehaviour
         _cursor.SelectedItemChanged += ChangeLabelToItem;       
     }
 
-    public void ChangeLabelToItem(int id)
+    public void ChangeLabelToItem(InventoryItem item)
     {
-        InventoryItem item = _inventory.GetItemInSpace(id);
         _textField.text = item ? item.ItemName : "Empty";
     }
     

@@ -2,24 +2,31 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum CursorState
+{
+    Empty,
+    HoldingItem,
+    HoveringItem
+}
+
 [RequireComponent(typeof(RectTransform))]
 public class GridCursor : MonoBehaviour
 {
-    public delegate void ItemChange(int id);
+    public delegate void ItemChange(InventoryItem item);
+    public delegate void CursorStateChange(CursorState newState);
+
+    public ItemChange SelectedItemChanged;
+    public CursorStateChange StateChanged;
+
+    [HideInInspector] public int SelectedItem = 0;
+    [HideInInspector] public CursorState State = CursorState.Empty;
 
     [SerializeField] protected Inventory _inventory = null;
     [SerializeField] protected GridLayoutExtended _grid = null;
     [SerializeField] protected InputManager _inputManager = null;
 
-    public ItemChange SelectedItemChanged;
-
-    protected Vector2 _cellSize = Vector2.zero;
     protected RectTransform _rectTransform = null;
 
-    protected Vector2 _savedAnchorMin = Vector2.zero;
-    protected Vector2 _savedAnchorMax = Vector2.zero;
-
-    [HideInInspector] public int SelectedItem = 0;
 
     protected InventoryItem _holdingItem = null;
     protected int _originalIdOfHoldingItem = -1;
@@ -28,7 +35,6 @@ public class GridCursor : MonoBehaviour
     {
         if (_grid)
         {
-            _cellSize = _grid.CellSize;
             _rectTransform = GetComponent<RectTransform>();
 
             _inputManager.X_Axis += HorizontalMove;
@@ -73,7 +79,20 @@ public class GridCursor : MonoBehaviour
         _rectTransform.anchoredPosition = selectedItemPos;
         SelectedItem = id;
 
-        SelectedItemChanged?.Invoke(SelectedItem);
+        InventoryItem item = _inventory.GetItemInSpace(id);
+
+        if (item && State == CursorState.Empty)
+        {
+            State = CursorState.HoveringItem;
+            StateChanged?.Invoke(State);
+        }
+        else if (!item && State == CursorState.HoveringItem)
+        {
+            State = CursorState.Empty;
+            StateChanged?.Invoke(State);
+        }
+
+        SelectedItemChanged?.Invoke(item);
     }
 
     public int KeepSelectionInRange(int newId)
@@ -84,8 +103,6 @@ public class GridCursor : MonoBehaviour
         {
             result = newId;
         }
-
-        Debug.Log("Selected item: " + result);
         return result;
     }
 
@@ -106,12 +123,19 @@ public class GridCursor : MonoBehaviour
         {
             _inventory.PlaceItemAt(SelectedItem, _originalIdOfHoldingItem, _holdingItem);
             _originalIdOfHoldingItem = -1;
-            SelectedItemChanged?.Invoke(SelectedItem);
+
+            SelectedItemChanged?.Invoke(_holdingItem);
+
+            State = CursorState.HoveringItem;
+            StateChanged?.Invoke(State);
         }
         else
         {
             _holdingItem = _inventory?.PickUpItemAt(SelectedItem, transform);
             _originalIdOfHoldingItem = SelectedItem;
+
+            State = CursorState.HoldingItem;
+            StateChanged?.Invoke(State);
         }
     }
 }
